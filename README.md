@@ -234,4 +234,79 @@ mvn clean install -Pdeploy-app-production
 ### cloudwatch_rds.yml
 Creates AWS CloudWatch dashboards for monitoring the RDS PostgreSQL database and Spring boot applications and also AWS EKS.
 
+## All Maven Commands
+
+### Building the Spring Boot Application
+
+```sh
+mvn clean install
+mvn clean package
+mvn spring-boot:run
+```
+
+## AWS CLI Commands to Set Up Profiles Locally
+
+### Setting Up the Profile in your Laptop
+Below commands will prompt you to enter the AWS Access Key ID, AWS Secret Access Key, default region name, and default output format for each profile.
+Example Commands:
+
+```shell
+# AWS Access Key ID [None]: <your-access-key-id>
+# AWS Secret Access Key [None]: <your-secret-access-key>
+# Default region name [None]: us-east-1
+# Default output format [None]: json
+````
+
+```shell
+aws configure --profile develop
+aws configure --profile qa
+aws configure --profile demo
+aws configure --profile production
+```
+
+## Automating Profile Setup with AWS SSO
+If you are using AWS Single Sign-On (SSO), you can configure your profiles without entering the access keys manually. Here is an example of how to set up AWS SSO profiles:
+
+#### Configure AWS SSO for the `develop` Profile
+```sh
+aws configure sso --profile develop
+aws configure sso --profile qa
+aws configure sso --profile demo
+  
+```
+
+### Create EKS Cluster
+
+#### Develop Environment
+```shell
+mvn clean install -Pcreate-eks-develop
+mvn clean install -Pcreate-eks-qa
+mvn clean install -Pcreate-eks-demo
+mvn clean install -Pcreate-eks-production
+```
+
+### Setup RDS
+```shell
+mvn clean install -Psetup-rds-develop
+mvn clean install -Psetup-rds-qa
+mvn clean install -Psetup-rds-demo
+mvn clean install -Psetup-rds-production
+```
+
+### Deploy Spring Boot Application
+```shell
+mvn clean install -Pdeploy-app-develop
+mvn clean install -Pdeploy-app-qa
+mvn clean install -Pdeploy-app-demo
+mvn clean install -Pdeploy-app-production
+```
+
+### Create CloudWatch Dashboard
+```shell
+mvn clean install -Pcreate-cloudwatch-develop
+mvn clean install -Pcreate-cloudwatch-qa
+mvn clean install -Pcreate-cloudwatch-demo
+mvn clean install -Pcreate-cloudwatch-production
+```
+
 
