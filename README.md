@@ -272,7 +272,7 @@ If you are using AWS Single Sign-On (SSO), you can configure your profiles witho
 aws configure sso --profile develop
 aws configure sso --profile qa
 aws configure sso --profile demo
-  
+aws configure sso --profile production
 ```
 
 ### Create EKS Cluster
