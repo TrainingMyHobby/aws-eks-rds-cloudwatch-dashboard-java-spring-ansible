@@ -51,10 +51,6 @@ DataLayer --> RDS
 
 ```
 
-## AWS Local Profiles Dependency
-- To manage AWS configurations securely and avoid hardcoding sensitive information in the source code, this project relies on AWS local profiles. 
-- AWS CLI profiles allow you to configure and manage your AWS credentials and settings for different environments (develop, qa, demo, production) locally on your development machine or CI/CD pipeline.
-
 ## Project Structure
 
 ```plaintext
@@ -129,12 +125,9 @@ your-repo/
 ## Setting Up Local AWS Profiles
 To configure AWS CLI profiles for each environment, run the following commands and follow the prompts to enter your AWS Access Key ID, Secret Access Key, region, and output format for each profile.
 
-## Using AWS Profiles in Maven Commands
-When running Maven commands, specify the appropriate AWS profile for the environment: develop, qa, demo, or production.
-```shell
-mvn clean install -P<profile-name> -Denv=<env> -Daws.profile=<aws-profile>
-```
-Replace <profile-name> with the appropriate Maven profile (e.g., setup-rds, create-eks, deploy-app), <env> with the environment (e.g., develop, qa, demo, production), and <aws-profile> with the corresponding AWS CLI profile.
+## AWS Local Profiles Dependency
+- To manage AWS configurations securely and avoid hardcoding sensitive information in the source code, this project relies on AWS local profiles.
+- AWS CLI profiles allow you to configure and manage your AWS credentials and settings for different environments (develop, qa, demo, production) locally on your development machine or CI/CD pipeline.
 
 ### Creating AWS Profiles For Each Environment (develop, qa, demo, production)
 ```shell
@@ -144,6 +137,22 @@ aws configure --profile demo
 aws configure --profile production
 ```
 By setting up these local AWS profiles, you ensure that the project can securely access AWS resources without hardcoding sensitive information in the codebase. These profiles will be referenced in the Maven build configurations and Ansible playbooks to manage and deploy the infrastructure and application.
+
+### Using AWS Profiles in Maven Commands
+When running Maven commands, specify the appropriate AWS profile for the environment: develop, qa, demo, or production.
+```shell
+mvn clean install -P<profile-name> -Denv=<env> -Daws.profile=<aws-profile>
+```
+Replace <profile-name> with the appropriate Maven profile (e.g., setup-rds, create-eks, deploy-app), <env> with the environment (e.g., develop, qa, demo, production), and <aws-profile> with the corresponding AWS CLI profile.
+
+#### Example Commands
+Set up RDS for Environments develop, qa, demo, production
+```shell
+mvn clean install -Psetup-rds -Denv=develop -Daws.profile=develop
+mvn clean install -Pcreate-eks -Denv=qa -Daws.profile=qa
+mvn clean install -Pdeploy-app -Denv=demo -Daws.profile=demo
+mvn clean install -Pdeploy-app -Denv=production -Daws.profile=production
+````
 
 ## Setup
 
@@ -186,8 +195,22 @@ curl http://localhost:8080/api/v1/trade-management/createTrade
 ### create_eks_cluster.yml
 Creates an EKS cluster in the specified AWS region.
 
+```shell
+mvn clean install -Pcreate-eks-develop
+mvn clean install -Pcreate-eks-qa
+mvn clean install -Pcreate-eks-demo
+mvn clean install -Pcreate-eks-production
+```
+
+
 ### create_rds.yml
 Creates an RDS PostgreSQL database.
+```shell
+mvn clean install -Psetup-rds-develop
+mvn clean install -Psetup-rds-qa
+mvn clean install -Psetup-rds-demo
+mvn clean install -Psetup-rds-production
+```
 
 ### github_actions_build.yml
 Triggers GitHub Actions workflow to build the Java Spring Boot code.
@@ -200,8 +223,15 @@ Creates AWS CloudWatch dashboards for monitoring the EKS cluster.
 
 ### cloudwatch_springboot.yml
 Creates AWS CloudWatch dashboards for monitoring the Spring Boot application.
+```shell
+mvn clean install -Pdeploy-app-develop
+mvn clean install -Pdeploy-app-qa
+mvn clean install -Pdeploy-app-demo
+mvn clean install -Pdeploy-app-production
+
+```
 
 ### cloudwatch_rds.yml
-Creates AWS CloudWatch dashboards for monitoring the RDS PostgreSQL database.
+Creates AWS CloudWatch dashboards for monitoring the RDS PostgreSQL database and Spring boot applications and also AWS EKS.
 
 

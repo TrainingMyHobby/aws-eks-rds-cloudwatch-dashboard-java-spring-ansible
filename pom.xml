@@ -1,4 +1,3 @@
-<!--suppress ALL -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -8,6 +7,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>2.7.18</version>
+        <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <groupId>com.tmh.aws</groupId>
@@ -20,15 +20,10 @@
     <properties>
         <java.version>11</java.version>
         <micrometer.version>1.11.0</micrometer.version>
-        <aws.region>us-east-1</aws.region>
     </properties>
 
     <dependencies>
         <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -60,6 +55,11 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
             <version>${micrometer.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.30</version>
+        </dependency>
 
         <!-- Additional dependencies (if any) -->
         <!-- Add other dependencies as needed -->
@@ -70,11 +70,6 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -83,17 +78,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
             </plugin>
 
-            <!-- Exec Maven Plugin for Ansible Integration -->
+            <!-- Exec Maven Plugin for Terraform and Ansible Integration -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -103,14 +90,9 @@
     </build>
 
     <profiles>
+        <!-- Profile for EKS Creation for Develop Environment -->
         <profile>
-            <id>develop</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-        </profile>
-        <profile>
-            <id>qa</id>
+            <id>create-eks-develop</id>
             <build>
                 <plugins>
                     <plugin>
@@ -118,8 +100,686 @@
                         <artifactId>exec-maven-plugin</artifactId>
                         <executions>
                             <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>develop</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>terraform-init</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>terraform</executable>
+                                    <arguments>
+                                        <argument>init</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.basedir}/terraform/develop</workingDirectory>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>develop</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>terraform-apply</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>terraform</executable>
+                                    <arguments>
+                                        <argument>apply</argument>
+                                        <argument>-auto-approve</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.basedir}/terraform/develop</workingDirectory>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>develop</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for EKS Creation for QA Environment -->
+        <profile>
+            <id>create-eks-qa</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>qa</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>terraform-init</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>terraform</executable>
+                                    <arguments>
+                                        <argument>init</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.basedir}/terraform/qa</workingDirectory>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>qa</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>terraform-apply</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>terraform</executable>
+                                    <arguments>
+                                        <argument>apply</argument>
+                                        <argument>-auto-approve</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.basedir}/terraform/qa</workingDirectory>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>qa</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for EKS Creation for Demo Environment -->
+        <profile>
+            <id>create-eks-demo</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>demo</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>terraform-init</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>terraform</executable>
+                                    <arguments>
+                                        <argument>init</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.basedir}/terraform/demo</workingDirectory>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>demo</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>terraform-apply</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>terraform</executable>
+                                    <arguments>
+                                        <argument>apply</argument>
+                                        <argument>-auto-approve</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.basedir}/terraform/demo</workingDirectory>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>demo</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for EKS Creation for Production Environment -->
+        <profile>
+            <id>create-eks-production</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>production</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>terraform-init</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>terraform</executable>
+                                    <arguments>
+                                        <argument>init</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.basedir}/terraform/production</workingDirectory>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>production</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>terraform-apply</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>terraform</executable>
+                                    <arguments>
+                                        <argument>apply</argument>
+                                        <argument>-auto-approve</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.basedir}/terraform/production</workingDirectory>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>production</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for RDS Setup for Develop Environment -->
+        <profile>
+            <id>setup-rds-develop</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>develop</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>retrieve-rds-endpoint</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>sh</executable>
+                                    <arguments>
+                                        <argument>-c</argument>
+                                        <argument>aws rds describe-db-instances --db-instance-identifier
+                                            your-db-instance-identifier --query 'DBInstances[0].Endpoint.Address'
+                                            --output text --profile develop
+                                        </argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>develop</AWS_PROFILE>
+                                    </environmentVariables>
+                                    <outputFile>${project.build.directory}/rds-endpoint.txt</outputFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-rds-instance</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>ansible-playbook</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/ansible/playbooks/create_rds.yml</argument>
+                                        <argument>-i</argument>
+                                        <argument>${project.basedir}/ansible/inventories/develop/hosts.yml</argument>
+                                        <argument>--extra-vars</argument>
+                                        <argument>env=develop</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>develop</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-schema</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>psql</executable>
+                                    <arguments>
+                                        <argument>--host=$(cat ${project.build.directory}/rds-endpoint.txt)</argument>
+                                        <argument>--port=5432</argument>
+                                        <!--suppress UnresolvedMavenProperty -->
+                                        <argument>--username=${env.RDS_USERNAME}</argument>
+                                        <argument>--dbname=trade_events_db</argument>
+                                        <argument>--command=CREATE SCHEMA IF NOT EXISTS develop;</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <!--suppress UnresolvedMavenProperty -->
+                                        <PGPASSWORD>${env.RDS_PASSWORD}</PGPASSWORD>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for RDS Setup for QA Environment -->
+        <profile>
+            <id>setup-rds-qa</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>qa</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>retrieve-rds-endpoint</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>sh</executable>
+                                    <arguments>
+                                        <argument>-c</argument>
+                                        <argument>aws rds describe-db-instances --db-instance-identifier
+                                            your-db-instance-identifier --query 'DBInstances[0].Endpoint.Address'
+                                            --output text --profile qa
+                                        </argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>qa</AWS_PROFILE>
+                                    </environmentVariables>
+                                    <outputFile>${project.build.directory}/rds-endpoint.txt</outputFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-rds-instance</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>ansible-playbook</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/ansible/playbooks/create_rds.yml</argument>
+                                        <argument>-i</argument>
+                                        <argument>${project.basedir}/ansible/inventories/qa/hosts.yml</argument>
+                                        <argument>--extra-vars</argument>
+                                        <argument>env=qa</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>qa</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-schema</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>psql</executable>
+                                    <arguments>
+                                        <argument>--host=$(cat ${project.build.directory}/rds-endpoint.txt)</argument>
+                                        <argument>--port=5432</argument>
+                                        <!--suppress UnresolvedMavenProperty -->
+                                        <argument>--username=${env.RDS_USERNAME}</argument>
+                                        <argument>--dbname=trade_events_db</argument>
+                                        <argument>--command=CREATE SCHEMA IF NOT EXISTS qa;</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <!--suppress UnresolvedMavenProperty -->
+                                        <PGPASSWORD>${env.RDS_PASSWORD}</PGPASSWORD>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for RDS Setup for Demo Environment -->
+        <profile>
+            <id>setup-rds-demo</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>demo</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>retrieve-rds-endpoint</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>sh</executable>
+                                    <arguments>
+                                        <argument>-c</argument>
+                                        <argument>aws rds describe-db-instances --db-instance-identifier
+                                            your-db-instance-identifier --query 'DBInstances[0].Endpoint.Address'
+                                            --output text --profile demo
+                                        </argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>demo</AWS_PROFILE>
+                                    </environmentVariables>
+                                    <outputFile>${project.build.directory}/rds-endpoint.txt</outputFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-rds-instance</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>ansible-playbook</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/ansible/playbooks/create_rds.yml</argument>
+                                        <argument>-i</argument>
+                                        <argument>${project.basedir}/ansible/inventories/demo/hosts.yml</argument>
+                                        <argument>--extra-vars</argument>
+                                        <argument>env=demo</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>demo</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-schema</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>psql</executable>
+                                    <arguments>
+                                        <argument>--host=$(cat ${project.build.directory}/rds-endpoint.txt)</argument>
+                                        <argument>--port=5432</argument>
+                                        <!--suppress UnresolvedMavenProperty -->
+                                        <argument>--username=${env.RDS_USERNAME}</argument>
+                                        <argument>--dbname=trade_events_db</argument>
+                                        <argument>--command=CREATE SCHEMA IF NOT EXISTS demo;</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <!--suppress UnresolvedMavenProperty -->
+                                        <PGPASSWORD>${env.RDS_PASSWORD}</PGPASSWORD>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for RDS Setup for Production Environment -->
+        <profile>
+            <id>setup-rds-production</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>production</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>retrieve-rds-endpoint</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>sh</executable>
+                                    <arguments>
+                                        <argument>-c</argument>
+                                        <argument>aws rds describe-db-instances --db-instance-identifier
+                                            your-db-instance-identifier --query 'DBInstances[0].Endpoint.Address'
+                                            --output text --profile production
+                                        </argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>production</AWS_PROFILE>
+                                    </environmentVariables>
+                                    <outputFile>${project.build.directory}/rds-endpoint.txt</outputFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-rds-instance</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>ansible-playbook</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/ansible/playbooks/create_rds.yml</argument>
+                                        <argument>-i</argument>
+                                        <argument>${project.basedir}/ansible/inventories/production/hosts.yml</argument>
+                                        <argument>--extra-vars</argument>
+                                        <argument>env=production</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>production</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-schema</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>psql</executable>
+                                    <arguments>
+                                        <argument>--host=$(cat ${project.build.directory}/rds-endpoint.txt)</argument>
+                                        <argument>--port=5432</argument>
+                                        <!--suppress UnresolvedMavenProperty -->
+                                        <argument>--username=${env.RDS_USERNAME}</argument>
+                                        <argument>--dbname=trade_events_db</argument>
+                                        <argument>--command=CREATE SCHEMA IF NOT EXISTS production;</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <!--suppress UnresolvedMavenProperty -->
+                                        <PGPASSWORD>${env.RDS_PASSWORD}</PGPASSWORD>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for Application Deployment for Develop Environment -->
+        <profile>
+            <id>deploy-app-develop</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>develop</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>run-ansible-playbook</id>
-                                <phase>package</phase>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>ansible-playbook</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/ansible/playbooks/deploy_springboot.yml</argument>
+                                        <argument>-i</argument>
+                                        <argument>${project.basedir}/ansible/inventories/develop/hosts.yml</argument>
+                                        <argument>--extra-vars</argument>
+                                        <argument>env=develop</argument>
+                                        <argument>namespace=develop</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>develop</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for Application Deployment for QA Environment -->
+        <profile>
+            <id>deploy-app-qa</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>qa</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>run-ansible-playbook</id>
+                                <phase>deploy</phase>
                                 <goals>
                                     <goal>exec</goal>
                                 </goals>
@@ -130,8 +790,12 @@
                                         <argument>-i</argument>
                                         <argument>${project.basedir}/ansible/inventories/qa/hosts.yml</argument>
                                         <argument>--extra-vars</argument>
-                                        <argument>inventory_dir=qa</argument>
+                                        <argument>env=qa</argument>
+                                        <argument>namespace=qa</argument>
                                     </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>qa</AWS_PROFILE>
+                                    </environmentVariables>
                                 </configuration>
                             </execution>
                         </executions>
@@ -139,8 +803,10 @@
                 </plugins>
             </build>
         </profile>
+
+        <!-- Profile for Application Deployment for Demo Environment -->
         <profile>
-            <id>demo</id>
+            <id>deploy-app-demo</id>
             <build>
                 <plugins>
                     <plugin>
@@ -148,8 +814,21 @@
                         <artifactId>exec-maven-plugin</artifactId>
                         <executions>
                             <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>demo</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>run-ansible-playbook</id>
-                                <phase>package</phase>
+                                <phase>deploy</phase>
                                 <goals>
                                     <goal>exec</goal>
                                 </goals>
@@ -160,8 +839,12 @@
                                         <argument>-i</argument>
                                         <argument>${project.basedir}/ansible/inventories/demo/hosts.yml</argument>
                                         <argument>--extra-vars</argument>
-                                        <argument>inventory_dir=demo</argument>
+                                        <argument>env=demo</argument>
+                                        <argument>namespace=demo</argument>
                                     </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>demo</AWS_PROFILE>
+                                    </environmentVariables>
                                 </configuration>
                             </execution>
                         </executions>
@@ -169,8 +852,10 @@
                 </plugins>
             </build>
         </profile>
+
+        <!-- Profile for Application Deployment for Production Environment -->
         <profile>
-            <id>production</id>
+            <id>deploy-app-production</id>
             <build>
                 <plugins>
                     <plugin>
@@ -178,8 +863,21 @@
                         <artifactId>exec-maven-plugin</artifactId>
                         <executions>
                             <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>production</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>run-ansible-playbook</id>
-                                <phase>package</phase>
+                                <phase>deploy</phase>
                                 <goals>
                                     <goal>exec</goal>
                                 </goals>
@@ -190,8 +888,246 @@
                                         <argument>-i</argument>
                                         <argument>${project.basedir}/ansible/inventories/production/hosts.yml</argument>
                                         <argument>--extra-vars</argument>
-                                        <argument>inventory_dir=production</argument>
+                                        <argument>env=production</argument>
+                                        <argument>namespace=production</argument>
                                     </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>production</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Standard profiles for build environments -->
+        <profile>
+            <id>develop</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <env>develop</env>
+                <namespace>develop</namespace>
+                <aws.profile>develop</aws.profile>
+            </properties>
+        </profile>
+        <profile>
+            <id>qa</id>
+            <properties>
+                <env>qa</env>
+                <namespace>qa</namespace>
+                <aws.profile>qa</aws.profile>
+            </properties>
+        </profile>
+        <profile>
+            <id>demo</id>
+            <properties>
+                <env>demo</env>
+                <namespace>demo</namespace>
+                <aws.profile>demo</aws.profile>
+            </properties>
+        </profile>
+        <profile>
+            <id>production</id>
+            <properties>
+                <env>production</env>
+                <namespace>production</namespace>
+                <aws.profile>production</aws.profile>
+            </properties>
+        </profile>
+
+        <!-- Profile for Creating AWS CloudWatch Dashboards for Develop Environment -->
+        <profile>
+            <id>create-cloudwatch-develop</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>develop</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-cloudwatch-dashboard</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>aws</executable>
+                                    <arguments>
+                                        <argument>cloudwatch</argument>
+                                        <argument>put-dashboard</argument>
+                                        <argument>--dashboard-name</argument>
+                                        <argument>Develop-Dashboard</argument>
+                                        <argument>--dashboard-body</argument>
+                                        <argument>file://${project.basedir}/cloudwatch/develop-dashboard.json</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>develop</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for Creating AWS CloudWatch Dashboards for QA Environment -->
+        <profile>
+            <id>create-cloudwatch-qa</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>qa</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-cloudwatch-dashboard</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>aws</executable>
+                                    <arguments>
+                                        <argument>cloudwatch</argument>
+                                        <argument>put-dashboard</argument>
+                                        <argument>--dashboard-name</argument>
+                                        <argument>QA-Dashboard</argument>
+                                        <argument>--dashboard-body</argument>
+                                        <argument>file://${project.basedir}/cloudwatch/qa-dashboard.json</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>qa</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for Creating AWS CloudWatch Dashboards for Demo Environment -->
+        <profile>
+            <id>create-cloudwatch-demo</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>demo</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-cloudwatch-dashboard</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>aws</executable>
+                                    <arguments>
+                                        <argument>cloudwatch</argument>
+                                        <argument>put-dashboard</argument>
+                                        <argument>--dashboard-name</argument>
+                                        <argument>Demo-Dashboard</argument>
+                                        <argument>--dashboard-body</argument>
+                                        <argument>file://${project.basedir}/cloudwatch/demo-dashboard.json</argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>demo</AWS_PROFILE>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for Creating AWS CloudWatch Dashboards for Production Environment -->
+        <profile>
+            <id>create-cloudwatch-production</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>assume-role</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>./assume_role.sh</executable>
+                                    <arguments>
+                                        <argument>production</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-cloudwatch-dashboard</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>aws</executable>
+                                    <arguments>
+                                        <argument>cloudwatch</argument>
+                                        <argument>put-dashboard</argument>
+                                        <argument>--dashboard-name</argument>
+                                        <argument>Production-Dashboard</argument>
+                                        <argument>--dashboard-body</argument>
+                                        <argument>file://${project.basedir}/cloudwatch/production-dashboard.json
+                                        </argument>
+                                    </arguments>
+                                    <environmentVariables>
+                                        <AWS_PROFILE>production</AWS_PROFILE>
+                                    </environmentVariables>
                                 </configuration>
                             </execution>
                         </executions>
