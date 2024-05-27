@@ -1,9 +1,53 @@
 # AWS EKS RDS CloudWatch Dashboard with Java Spring Boot and Ansible
 
 ## Overview
-
 This project demonstrates deploying Java Spring Boot microservices to AWS EKS clusters with RDS PostgreSQL databases and monitoring using AWS CloudWatch. The deployment process is automated using Ansible and Maven.
 
+Application Architecture
+![Application Architecture Description](Docs/Application_Architecture.png "Application Architecture")
+
+```plantuml
+@startuml
+!define RECTANGLE class
+
+package "AWS Infrastructure" {
+    RECTANGLE "AWS EKS Cluster" as EKS {
+        RECTANGLE "Spring Boot Application" as SpringBootApp {
+            RECTANGLE "Controller" as Controller {
+                RECTANGLE "TradeController" as TradeController
+            }
+            RECTANGLE "Service Layer" as ServiceLayer {
+                RECTANGLE "TradeHeaderService" as TradeHeaderService
+                RECTANGLE "TradeInfoService" as TradeInfoService
+                RECTANGLE "TradeLineService" as TradeLineService
+            }
+            RECTANGLE "Data Layer" as DataLayer {
+                RECTANGLE "TradeHeader" as TradeHeader
+                RECTANGLE "TradeInfo" as TradeInfo
+                RECTANGLE "TradeLine" as TradeLine
+                RECTANGLE "BaseModel" as BaseModel
+            }
+        }
+    }
+
+    RECTANGLE "AWS RDS PostgreSQL" as RDS {
+        TradeHeader --> RDS
+        TradeInfo --> RDS
+        TradeLine --> RDS
+    }
+
+    RECTANGLE "AWS CloudWatch" as CloudWatch {
+        SpringBootApp -[hidden]--> CloudWatch : Monitoring
+    }
+}
+
+Controller --> ServiceLayer
+ServiceLayer --> DataLayer
+DataLayer --> RDS
+
+@enduml
+
+```
 ## Project Structure
 
 ```plaintext
