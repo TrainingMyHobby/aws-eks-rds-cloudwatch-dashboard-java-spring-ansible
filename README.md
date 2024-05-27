@@ -3,6 +3,8 @@
 ## Overview
 This project demonstrates deploying Java Spring Boot microservices to AWS EKS clusters with RDS PostgreSQL databases and monitoring using AWS CloudWatch. The deployment process is automated using Ansible and Maven.
 
+This project involves setting up and deploying a Java Spring Boot microservices application in an AWS EKS cluster, utilizing AWS RDS for database management and AWS CloudWatch for monitoring. The project is structured to handle multiple environments: develop, qa, demo, and production.
+
 Application Architecture
 ![Application Architecture Description](Docs/Application_Architecture.png "Application Architecture")
 
@@ -48,6 +50,11 @@ DataLayer --> RDS
 @enduml
 
 ```
+
+## AWS Local Profiles Dependency
+- To manage AWS configurations securely and avoid hardcoding sensitive information in the source code, this project relies on AWS local profiles. 
+- AWS CLI profiles allow you to configure and manage your AWS credentials and settings for different environments (develop, qa, demo, production) locally on your development machine or CI/CD pipeline.
+
 ## Project Structure
 
 ```plaintext
@@ -115,11 +122,31 @@ your-repo/
 ## Prerequisites
 - JDK 21 
 - Maven 
-- AWS CLI configured with appropriate permissions 
+- AWS CLI configured with appropriate permissions. AWS CLI: Ensure that the AWS CLI is installed and configured on your local machine. Installation instructions can be found here https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html.
 - Terraform 
 - Ansible
 
+## Setting Up Local AWS Profiles
+To configure AWS CLI profiles for each environment, run the following commands and follow the prompts to enter your AWS Access Key ID, Secret Access Key, region, and output format for each profile.
+
+## Using AWS Profiles in Maven Commands
+When running Maven commands, specify the appropriate AWS profile for the environment: develop, qa, demo, or production.
+```shell
+mvn clean install -P<profile-name> -Denv=<env> -Daws.profile=<aws-profile>
+```
+Replace <profile-name> with the appropriate Maven profile (e.g., setup-rds, create-eks, deploy-app), <env> with the environment (e.g., develop, qa, demo, production), and <aws-profile> with the corresponding AWS CLI profile.
+
+### Creating AWS Profiles For Each Environment (develop, qa, demo, production)
+```shell
+aws configure --profile develop
+aws configure --profile qa
+aws configure --profile demo
+aws configure --profile production
+```
+By setting up these local AWS profiles, you ensure that the project can securely access AWS resources without hardcoding sensitive information in the codebase. These profiles will be referenced in the Maven build configurations and Ansible playbooks to manage and deploy the infrastructure and application.
+
 ## Setup
+
 ### 1. Clone the Repository
 ```bash
 git clone <this repo URL>
